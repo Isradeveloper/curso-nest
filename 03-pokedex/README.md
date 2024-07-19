@@ -19,6 +19,11 @@ docker-compose up -d
 ```
 
 
+5. Reconstruir la base de datos con la semilla
+```
+https://localhost:3000/api/seed
+```
+
 ## Stack usado
 * MongoDB
 * Nest
