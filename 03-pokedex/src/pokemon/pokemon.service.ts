@@ -11,13 +11,20 @@ import { Model } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { isMongoId, isNumber } from 'class-validator';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PokemonService {
+  private defaultLimit;
+
   constructor(
     @InjectModel(Pokemon.name)
     private readonly pokemonModel: Model<Pokemon>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.defaultLimit = configService.get<number>('defaultLimit');
+  }
 
   async create(createPokemonDto: CreatePokemonDto) {
     createPokemonDto.name = createPokemonDto.name.toLocaleLowerCase();
@@ -30,12 +37,14 @@ export class PokemonService {
     }
   }
 
-  findAll() {
+  findAll(paginationDto: PaginationDto) {
+    const { limit = this.defaultLimit, offset = 0 } = paginationDto;
+
     return this.pokemonModel
-      .find({
-        $or: [{ number: 4 }, { number: 1 }],
-      })
-      .limit(1);
+      .find()
+      .limit(limit)
+      .skip(offset)
+      .sort({ number: 1 });
   }
 
   async findOne(term: string) {
