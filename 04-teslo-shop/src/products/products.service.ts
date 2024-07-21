@@ -13,14 +13,19 @@ import { Product } from './entities/product.entity';
 import { DatabaseError } from 'pg';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { validate as isUUID } from 'uuid';
+import { PaginationClass } from 'src/common/classes';
+import { ConfigService } from '@nestjs/config';
 @Injectable()
-export class ProductsService {
+export class ProductsService extends PaginationClass<Product> {
   private readonly logger = new Logger('ProductsService');
 
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    super(productRepository, configService, 'products');
+  }
 
   async create(createProductDto: CreateProductDto) {
     try {
@@ -33,12 +38,13 @@ export class ProductsService {
   }
 
   async findAll(paginationDto: PaginationDto) {
-    const { page = 1, pageSize = 2 } = paginationDto;
+    // const { page = 1, pageSize = 2 } = paginationDto;
+    // return this.productRepository.find({
+    //   skip: (page - 1) * pageSize,
+    //   take: pageSize,
+    // });
 
-    return this.productRepository.find({
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+    return this.getPaginatedByORM(paginationDto);
   }
 
   async findOne(term: string) {
