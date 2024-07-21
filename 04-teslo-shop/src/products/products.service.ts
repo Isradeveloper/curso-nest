@@ -8,13 +8,13 @@ import {
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
-import { Product } from './entities/product.entity';
+import { DataSource, Repository } from 'typeorm';
 import { DatabaseError } from 'pg';
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 import { validate as isUUID } from 'uuid';
 import { PaginationClass } from 'src/common/classes';
 import { ConfigService } from '@nestjs/config';
+import { Product, ProductImage } from './entities';
 @Injectable()
 export class ProductsService extends PaginationClass<Product> {
   private readonly logger = new Logger('ProductsService');
@@ -22,6 +22,12 @@ export class ProductsService extends PaginationClass<Product> {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: Repository<ProductImage>,
+
+    private readonly dataSource: DataSource,
+
     private readonly configService: ConfigService,
   ) {
     super(productRepository, configService, 'products');
@@ -29,9 +35,15 @@ export class ProductsService extends PaginationClass<Product> {
 
   async create(createProductDto: CreateProductDto) {
     try {
-      const product = this.productRepository.create(createProductDto);
+      const { images = [], ...productProperties } = createProductDto;
+      const product = this.productRepository.create({
+        ...productProperties,
+        images: images.map((url) =>
+          this.productImageRepository.create({ url }),
+        ),
+      });
       await this.productRepository.save(product);
-      return product;
+      return { ...product, images };
     } catch (error) {
       this.handleDbExceptions(error);
     }
@@ -44,9 +56,16 @@ export class ProductsService extends PaginationClass<Product> {
     //   take: pageSize,
     // });
 
-    return this.getPaginatedByORM(paginationDto);
+    return this.getPaginatedByORM(paginationDto, {});
   }
 
+  async findOnePlane(term: string) {
+    const { images = [], ...productProperties } = await this.findOne(term);
+    return {
+      ...productProperties,
+      images: images.map((productImage) => productImage.url),
+    };
+  }
   async findOne(term: string) {
     let product: Product;
 
@@ -59,12 +78,13 @@ export class ProductsService extends PaginationClass<Product> {
       // });
 
       //* QUERY BUILDER
-      const queryBuilder = this.productRepository.createQueryBuilder();
+      const queryBuilder = this.productRepository.createQueryBuilder('prod');
       product = await queryBuilder
         .where('title ILIKE :title or slug = :slug', {
           title: `%${term}%`,
           slug: term.toLowerCase(),
         })
+        .leftJoinAndSelect('prod.images', 'prodImages')
         .getOne();
     }
 
@@ -73,18 +93,40 @@ export class ProductsService extends PaginationClass<Product> {
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
+    const { images, ...toUpdate } = updateProductDto;
+
     const product = await this.productRepository.preload({
       id: id,
-      ...updateProductDto,
+      ...toUpdate,
     });
 
     if (!product)
       throw new NotFoundException(`Product with id ${id} not found`);
 
+    // Create query runner
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      await this.productRepository.save(product);
-      return product;
+      if (images) {
+        await queryRunner.manager.delete(ProductImage, { product: { id } });
+
+        product.images = images.map((image) =>
+          this.productImageRepository.create({ url: image }),
+        );
+      }
+
+      await queryRunner.manager.save(product);
+      // await this.productRepository.save(product);
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+
+      return this.findOnePlane(id);
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
       this.handleDbExceptions(error);
     }
   }
@@ -92,6 +134,15 @@ export class ProductsService extends PaginationClass<Product> {
   async remove(id: string) {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);
+  }
+
+  async deleteAllProducts() {
+    const query = this.productRepository.createQueryBuilder('product');
+    try {
+      return await query.delete().where({}).execute();
+    } catch (error) {
+      this.handleDbExceptions(error);
+    }
   }
 
   private handleDbExceptions(error: DatabaseError) {
