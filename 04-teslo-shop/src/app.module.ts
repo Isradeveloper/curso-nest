@@ -5,22 +5,14 @@ import { ProductsModule } from './products/products.module';
 import { CommonModule } from './common/common.module';
 import { envConfiguration } from './config/env.config';
 import { SeedModule } from './seed/seed.module';
+import { dataSourceOptions } from 'db/data-source';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       load: [envConfiguration],
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: +process.env.DB_PORT,
-      database: process.env.DB_NAME,
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      autoLoadEntities: true,
-      synchronize: true,
-    }),
+    TypeOrmModule.forRoot({ ...dataSourceOptions, autoLoadEntities: true }),
     ProductsModule,
     CommonModule,
     SeedModule,
