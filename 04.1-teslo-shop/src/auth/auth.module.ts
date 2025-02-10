@@ -12,7 +12,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    ConfigService,
+    ConfigModule,
     // JwtModule.register({
     //   secret: '12345678910',
     //   signOptions: { expiresIn: '1h' },

@@ -8,10 +8,15 @@ import { FilesModule } from './files/files.module';
 // import { ServeStaticModule } from '@nestjs/serve-static';
 // import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
+import { envSchema } from './config/joi.validation';
+import { envConfig } from './config/env.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      load: [envConfig],
+      validationSchema: envSchema,
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
