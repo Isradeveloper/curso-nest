@@ -10,12 +10,16 @@ import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { LoginUserDto } from './dto/login-user-dto';
+import { JwtService } from '@nestjs/jwt';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly jwtService: JwtService,
   ) {}
 
   async createUser(createUserDto: CreateUserDto) {
@@ -32,7 +36,10 @@ export class AuthService {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
 
-      return { ...userWithoutPassword };
+      return {
+        ...userWithoutPassword,
+        token: this.getJwtToken({ email: user.email }),
+      };
     } catch (error) {
       console.log(error);
       this.handleDBError(error);
@@ -54,7 +61,10 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 
-    return { ...userWithoutPassword };
+    return {
+      ...userWithoutPassword,
+      token: this.getJwtToken({ email: user.email }),
+    };
   }
 
   private handleDBError(error: any): never {
@@ -66,5 +76,10 @@ export class AuthService {
     throw new InternalServerErrorException(
       'Error creating user please check server logs',
     );
+  }
+
+  private getJwtToken(payload: JwtPayload) {
+    const token = this.jwtService.sign(payload);
+    return token;
   }
 }
