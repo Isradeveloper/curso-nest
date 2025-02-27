@@ -34,11 +34,11 @@ export class AuthService {
       await this.userRepository.save(user);
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, id: __, ...userWithoutPasswordAndId } = user;
 
       return {
-        ...userWithoutPassword,
-        token: this.getJwtToken({ email: user.email }),
+        ...userWithoutPasswordAndId,
+        token: this.getJwtToken({ id: user.id }),
       };
     } catch (error) {
       console.log(error);
@@ -51,7 +51,7 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { email, isActive: true },
-      select: { password: true, email: true },
+      select: { password: true, email: true, id: true },
     });
 
     if (!user || !bcrypt.compareSync(password, user.password)) {
@@ -59,11 +59,18 @@ export class AuthService {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, id: __, ...userWithoutPassword } = user;
 
     return {
       ...userWithoutPassword,
-      token: this.getJwtToken({ email: user.email }),
+      token: this.getJwtToken({ id: user.id }),
+    };
+  }
+
+  checkAuthStatus(user: User) {
+    return {
+      ...user,
+      token: this.getJwtToken({ id: user.id }),
     };
   }
 

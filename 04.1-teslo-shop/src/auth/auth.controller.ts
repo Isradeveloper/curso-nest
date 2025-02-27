@@ -3,6 +3,10 @@ import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user-dto';
 import { LoginUserDto } from './dto/login-user-dto';
 import { AuthGuard } from '@nestjs/passport';
+import { User } from './entities/user.entity';
+import { Auth, GetUser, RawHeaders, RoleProtected } from './decorators';
+import { UserRoleGuard } from './guards';
+import { ValidRoles } from './interfaces';
 
 @Controller('auth')
 export class AuthController {
@@ -20,7 +24,31 @@ export class AuthController {
 
   @Get('private')
   @UseGuards(AuthGuard())
-  testingPrivateRoute() {
-    return { ok: true, message: 'Hola mundo Private' };
+  testingPrivateRoute(
+    @GetUser() user: User,
+    @GetUser('email') email: string,
+    @RawHeaders() rawHeaders: string[],
+  ) {
+    return { ok: true, message: 'Hola mundo Private', user, email, rawHeaders };
+  }
+
+  // @SetMetadata('roles', ['admin', 'super-user'])
+  @Get('private2')
+  @RoleProtected(ValidRoles.admin)
+  @UseGuards(AuthGuard(), UserRoleGuard)
+  privateRoute2(@GetUser() user: User) {
+    return { ok: true, message: 'Hola mundo Private', user };
+  }
+
+  @Get('private3')
+  @Auth(ValidRoles.admin)
+  privateRoute3(@GetUser() user: User) {
+    return { ok: true, message: 'Hola mundo Private', user };
+  }
+
+  @Get('check-status')
+  @Auth()
+  checkAuthStatus(@GetUser() user: User) {
+    return this.authService.checkAuthStatus(user);
   }
 }
