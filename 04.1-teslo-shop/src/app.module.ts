@@ -10,6 +10,7 @@ import { FilesModule } from './files/files.module';
 import { AuthModule } from './auth/auth.module';
 import { envSchema } from './config/joi.validation';
 import { envConfig } from './config/env.config';
+import { MessagesWsModule } from './messages-ws/messages-ws.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { envConfig } from './config/env.config';
     SeedModule,
     FilesModule,
     AuthModule,
+    MessagesWsModule,
   ],
 })
 export class AppModule {}
