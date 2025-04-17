@@ -52,6 +52,14 @@ export const getEmploymentLetterByIdReport = (
   } = options;
 
   const docDefinition: TDocumentDefinitions = {
+    background: [
+      {
+        image: 'src/assets/tucan-banner.png',
+        width: 595.28,
+        height: 841.89,
+        opacity: 0.03,
+      },
+    ],
     styles: style,
     header: headerSection({
       showLogo: true,
